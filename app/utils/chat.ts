@@ -13,26 +13,29 @@ export function compressImage(file: File, maxSize: number): Promise<string> {
         let quality = 0.9;
         let dataUrl;
 
-        do {
+        const compress = () => {
           canvas.width = width;
           canvas.height = height;
           ctx?.clearRect(0, 0, canvas.width, canvas.height);
           ctx?.drawImage(image, 0, 0, width, height);
           dataUrl = canvas.toDataURL("image/jpeg", quality);
 
-          if (dataUrl.length < maxSize) break;
-
-          if (quality > 0.5) {
-            // Prioritize quality reduction
-            quality -= 0.1;
+          if (dataUrl.length > maxSize) {
+            if (quality > 0.5) {
+              quality -= 0.05;
+            } else if (width > 100 && height > 100) {
+              width *= 0.95;
+              height *= 0.95;
+            } else {
+              return resolve(dataUrl);
+            }
+            setTimeout(compress, 0);
           } else {
-            // Then reduce the size
-            width *= 0.9;
-            height *= 0.9;
+            resolve(dataUrl);
           }
-        } while (dataUrl.length > maxSize);
+        };
 
-        resolve(dataUrl);
+        compress();
       };
       image.onerror = reject;
       image.src = readerEvent.target.result;
@@ -47,8 +50,8 @@ export function compressImage(file: File, maxSize: number): Promise<string> {
         .catch((e) => {
           reject(e);
         });
+    } else {
+      reader.readAsDataURL(file);
     }
-
-    reader.readAsDataURL(file);
   });
 }
